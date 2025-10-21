@@ -1,0 +1,26 @@
+# Credenciales y tokens sensibles
+/credentials.json
+/token.json
+
+# Entornos virtuales
+venv/
+.venv/
+
+# Salidas y artefactos
+output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

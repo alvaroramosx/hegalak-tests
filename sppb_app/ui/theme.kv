@@ -1,0 +1,86 @@
+# Tema warm (beige/naranja) con tarjetas y botones redondeados
+
+#:import rgba kivy.utils.get_color_from_hex
+
+<Surface@BoxLayout>:
+	canvas.before:
+		# Sombra bajo la tarjeta (debajo del contenido)
+		Color:
+			rgba: 0, 0, 0, 0.06
+		RoundedRectangle:
+			pos: self.x, self.y-2
+			size: self.width, self.height
+			radius: [14,]
+		# Fondo de la tarjeta
+		Color:
+			rgba: rgba('#F5EFE6')
+		RoundedRectangle:
+			pos: self.pos
+			size: self.size
+			radius: [14,]
+
+<PrimaryButton@Button>:
+	font_size: '17sp'
+	bold: True
+	background_normal: ''
+	background_down: ''
+	color: 1, 1, 1, 1
+	padding: 16, 16
+	canvas.before:
+		Color:
+			rgba: rgba('#EA580C') if self.state == 'normal' else rgba('#C2410C')
+		RoundedRectangle:
+			pos: self.pos
+			size: self.size
+			radius: [12,]
+
+<SecondaryButton@Button>:
+	font_size: '17sp'
+	background_normal: ''
+	background_down: ''
+	color: rgba('#1F2937')
+	padding: 16, 16
+	canvas.before:
+		Color:
+			rgba: rgba('#E5DCCB') if self.state == 'normal' else rgba('#D8CCB6')
+		RoundedRectangle:
+			pos: self.pos
+			size: self.size
+			radius: [12,]
+
+<TextInput>:
+	font_size: '16sp'
+	# Texto negro visible
+	foreground_color: 0, 0, 0, 1
+	disabled_foreground_color: 0, 0, 0, 1
+	hint_text_color: rgba('#6B7280')
+	cursor_color: rgba('#7C2D12')
+	selection_color: 0.16, 0.58, 0.88, 0.25
+	# Fondo claro y sin imágenes por defecto
+	background_normal: ''
+	background_active: ''
+	background_color: 1, 1, 1, 1
+	padding: 12, 12
+	write_tab: False
+	multiline: False
+	readonly: False
+	text_validate_unfocus: True
+	# Solo borde fino; sin overlays que puedan tapar texto
+	canvas.after:
+		Color:
+			rgba: rgba('#E6DFD3')
+		Line:
+			rounded_rectangle: (*self.pos, *self.size, 10)
+			width: 1.2
+
+<Label>:
+	color: rgba('#1F2937')
+
+<TitleLabel@Label>:
+	font_size: '22sp'
+	bold: True
+	color: rgba('#7C2D12')
+
+# Opcional: status bar
+# Usa este estilo para la barra de estado si quieres un fondo semitransparente
+# Puedes asignarlo con canvas en el widget correspondiente
