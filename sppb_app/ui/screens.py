@@ -105,12 +105,12 @@ class StartScreen(BaseScreen):
 			self.set_status("❗ Introduce nombre y edad del paciente.")
 			return
 		self.set_status("")
-		self.root_widget.goto("balance")
+		self.root_widget.goto("balance_feet")
 
 
-class BalanceScreen(BaseScreen):
+class BalanceFeetScreen(BaseScreen):
 	def __init__(self, root, **kwargs):
-		super().__init__(root, name="balance", **kwargs)
+		super().__init__(root, name="balance_feet", **kwargs)
 		layout = BoxLayout(orientation="vertical", padding=20, spacing=16)
 
 		card = Factory.Surface(orientation="vertical", padding=16, spacing=12)
@@ -118,23 +118,27 @@ class BalanceScreen(BaseScreen):
 		form = GridLayout(cols=2, size_hint_y=None, padding=5, spacing=10)
 		form.bind(minimum_height=form.setter("height"))
 
-		self.feet = self.style_input(TextInput(hint_text="¿Mantiene 10s? Segundos (0-10)", multiline=False, input_filter="float", size_hint_y=None, height=48))
-		self.semi = self.style_input(TextInput(hint_text="¿Mantiene 10s? Segundos (0-10)", multiline=False, input_filter="float", size_hint_y=None, height=48))
-		self.tandem = self.style_input(TextInput(hint_text="Segundos (0-10)", multiline=False, input_filter="float", size_hint_y=None, height=48))
+		self.opt_yes = CheckBox(size_hint_y=None, height=40)
+		self.opt_no = CheckBox(size_hint_y=None, height=40)
+		self.opt_na = CheckBox(size_hint_y=None, height=40)
+		form.add_widget(Label(text="A) Pies juntos · Mantuvo 10 s (1 punto)", size_hint_y=None, height=40)); form.add_widget(self.opt_yes)
+		form.add_widget(Label(text="A) No mantuvo 10 s (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_no)
+		form.add_widget(Label(text="A) No intentado (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_na)
 
-		form.add_widget(Label(text="A) Pies juntos (s)", size_hint_y=None, height=48)); form.add_widget(self.feet)
-		form.add_widget(Label(text="B) Semitándem (s)", size_hint_y=None, height=48)); form.add_widget(self.semi)
-		form.add_widget(Label(text="C) Tándem (s)", size_hint_y=None, height=48)); form.add_widget(self.tandem)
+		self._bind_exclusive(self.opt_yes, self.opt_no, self.opt_na)
 
 		scroll = ScrollView(size_hint=(1, 1))
 		scroll.add_widget(form)
 
 		btns = BoxLayout(size_hint_y=None, height=56, spacing=10)
+		back_btn = Factory.SecondaryButton(text="← Anterior")
+		back_btn.bind(on_release=lambda *_: self.root_widget.goto("start"))
 		next_btn = Factory.PrimaryButton(text="Siguiente →")
 		next_btn.bind(on_release=lambda *_: self.on_next())
+		btns.add_widget(back_btn)
 		btns.add_widget(next_btn)
 
-		title = Factory.TitleLabel(text="1. Prueba de balance", size_hint_y=None, height=40)
+		title = Factory.TitleLabel(text="1A. Pies juntos", size_hint_y=None, height=40)
 		card.add_widget(title)
 		card.add_widget(scroll)
 		card.add_widget(btns)
@@ -142,18 +146,144 @@ class BalanceScreen(BaseScreen):
 		layout.add_widget(card)
 		self.add_widget(layout)
 
+	def _bind_exclusive(self, *boxes):
+		def on_active(box, value):
+			if not value:
+				return
+			for b in boxes:
+				if b is not box:
+					b.active = False
+		for b in boxes:
+			b.bind(active=on_active)
+
 	def on_pre_enter(self):
 		self.update_progress()
 
 	def on_next(self):
-		def sfloat(t):
-			try:
-				return float((t or "0").replace(",", "."))
-			except Exception:
-				return 0.0
-		self.state.feet_together_s = max(0.0, min(10.0, sfloat(self.feet.text)))
-		self.state.semi_tandem_s = max(0.0, min(10.0, sfloat(self.semi.text)))
-		self.state.tandem_s = max(0.0, min(10.0, sfloat(self.tandem.text)))
+		self.state.feet_together_s = 10.0 if self.opt_yes.active else 0.0
+		self.update_progress()
+		self.root_widget.goto("balance_semi")
+
+
+class BalanceSemiScreen(BaseScreen):
+	def __init__(self, root, **kwargs):
+		super().__init__(root, name="balance_semi", **kwargs)
+		layout = BoxLayout(orientation="vertical", padding=20, spacing=16)
+
+		card = Factory.Surface(orientation="vertical", padding=16, spacing=12)
+
+		form = GridLayout(cols=2, size_hint_y=None, padding=5, spacing=10)
+		form.bind(minimum_height=form.setter("height"))
+
+		self.opt_yes = CheckBox(size_hint_y=None, height=40)
+		self.opt_no = CheckBox(size_hint_y=None, height=40)
+		self.opt_na = CheckBox(size_hint_y=None, height=40)
+		form.add_widget(Label(text="B) Semitándem · Mantuvo 10 s", size_hint_y=None, height=40)); form.add_widget(self.opt_yes)
+		form.add_widget(Label(text="B) No mantuvo 10 s", size_hint_y=None, height=40)); form.add_widget(self.opt_no)
+		form.add_widget(Label(text="B) No intentado", size_hint_y=None, height=40)); form.add_widget(self.opt_na)
+
+		self._bind_exclusive(self.opt_yes, self.opt_no, self.opt_na)
+
+		scroll = ScrollView(size_hint=(1, 1))
+		scroll.add_widget(form)
+
+		btns = BoxLayout(size_hint_y=None, height=56, spacing=10)
+		back_btn = Factory.SecondaryButton(text="← Anterior")
+		back_btn.bind(on_release=lambda *_: self.root_widget.goto("balance_feet"))
+		next_btn = Factory.PrimaryButton(text="Siguiente →")
+		next_btn.bind(on_release=lambda *_: self.on_next())
+		btns.add_widget(back_btn)
+		btns.add_widget(next_btn)
+
+		title = Factory.TitleLabel(text="1B. Semitándem", size_hint_y=None, height=40)
+		card.add_widget(title)
+		card.add_widget(scroll)
+		card.add_widget(btns)
+
+		layout.add_widget(card)
+		self.add_widget(layout)
+
+	def _bind_exclusive(self, *boxes):
+		def on_active(box, value):
+			if not value:
+				return
+			for b in boxes:
+				if b is not box:
+					b.active = False
+		for b in boxes:
+			b.bind(active=on_active)
+
+	def on_pre_enter(self):
+		self.update_progress()
+
+	def on_next(self):
+		self.state.semi_tandem_s = 10.0 if self.opt_yes.active else 0.0
+		self.update_progress()
+		self.root_widget.goto("balance_tandem")
+
+
+class BalanceTandemScreen(BaseScreen):
+	def __init__(self, root, **kwargs):
+		super().__init__(root, name="balance_tandem", **kwargs)
+		layout = BoxLayout(orientation="vertical", padding=20, spacing=16)
+
+		card = Factory.Surface(orientation="vertical", padding=16, spacing=12)
+
+		form = GridLayout(cols=2, size_hint_y=None, padding=5, spacing=10)
+		form.bind(minimum_height=form.setter("height"))
+
+		self.opt_10 = CheckBox(size_hint_y=None, height=40)
+		self.opt_3to9 = CheckBox(size_hint_y=None, height=40)
+		self.opt_lt3 = CheckBox(size_hint_y=None, height=40)
+		self.opt_na = CheckBox(size_hint_y=None, height=40)
+		form.add_widget(Label(text="C) Tándem · Mantuvo 10 s (2 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_10)
+		form.add_widget(Label(text="C) Mantuvo 3–9.99 s (1 punto)", size_hint_y=None, height=40)); form.add_widget(self.opt_3to9)
+		form.add_widget(Label(text="C) < 3 s (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_lt3)
+		form.add_widget(Label(text="C) No intentado (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_na)
+
+		self._bind_exclusive(self.opt_10, self.opt_3to9, self.opt_lt3, self.opt_na)
+
+		scroll = ScrollView(size_hint=(1, 1))
+		scroll.add_widget(form)
+
+		btns = BoxLayout(size_hint_y=None, height=56, spacing=10)
+		back_btn = Factory.SecondaryButton(text="← Anterior")
+		back_btn.bind(on_release=lambda *_: self.root_widget.goto("balance_semi"))
+		next_btn = Factory.PrimaryButton(text="Siguiente →")
+		next_btn.bind(on_release=lambda *_: self.on_next())
+		btns.add_widget(back_btn)
+		btns.add_widget(next_btn)
+
+		title = Factory.TitleLabel(text="1C. Tándem", size_hint_y=None, height=40)
+		card.add_widget(title)
+		card.add_widget(scroll)
+		card.add_widget(btns)
+
+		layout.add_widget(card)
+		self.add_widget(layout)
+
+	def _bind_exclusive(self, *boxes):
+		def on_active(box, value):
+			if not value:
+				return
+			for b in boxes:
+				if b is not box:
+					b.active = False
+		for b in boxes:
+			b.bind(active=on_active)
+
+	def on_pre_enter(self):
+		self.update_progress()
+
+	def on_next(self):
+		if self.opt_10.active:
+			self.state.tandem_s = 10.0
+		elif self.opt_3to9.active:
+			self.state.tandem_s = 5.0
+		elif self.opt_lt3.active:
+			self.state.tandem_s = 2.0
+		else:
+			self.state.tandem_s = 0.0
 		self.update_progress()
 		self.root_widget.goto("gait")
 
@@ -180,7 +310,7 @@ class GaitScreen(BaseScreen):
 		scroll.add_widget(form)
 
 		btns = BoxLayout(size_hint_y=None, height=56, spacing=10)
-		next_btn = Factory.PrimaryButton(text="Siguiente →")
+		next_btn = Factory.PrimaryButton(text="Siguiente")
 		next_btn.bind(on_release=lambda *_: self.on_next())
 		btns.add_widget(next_btn)
 
@@ -231,7 +361,7 @@ class ChairScreen(BaseScreen):
 		scroll.add_widget(form)
 
 		btns = BoxLayout(size_hint_y=None, height=56, spacing=10)
-		next_btn = Factory.PrimaryButton(text="Ver resumen →")
+		next_btn = Factory.PrimaryButton(text="Ver resumen")
 		next_btn.bind(on_release=lambda *_: self.on_next())
 		btns.add_widget(next_btn)
 
@@ -358,7 +488,9 @@ class WizardRoot(BoxLayout):
 
 		self.sm = ScreenManager(transition=NoTransition())
 		self.sm.add_widget(StartScreen(self))
-		self.sm.add_widget(BalanceScreen(self))
+		self.sm.add_widget(BalanceFeetScreen(self))
+		self.sm.add_widget(BalanceSemiScreen(self))
+		self.sm.add_widget(BalanceTandemScreen(self))
 		self.sm.add_widget(GaitScreen(self))
 		self.sm.add_widget(ChairScreen(self))
 		self.sm.add_widget(SummaryScreen(self))

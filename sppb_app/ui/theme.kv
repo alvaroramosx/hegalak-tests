@@ -81,6 +81,17 @@
 	bold: True
 	color: rgba('#7C2D12')
 
+# CheckBox más visible: borde negro alrededor del cuadro
+<CheckBox>:
+    size_hint_x: None
+    width: 40
+    canvas.after:
+        Color:
+            rgba: 0, 0, 0, 0.9
+        Line:
+            rounded_rectangle: (self.center_x - 12, self.center_y - 12, 24, 24, 4)
+            width: 1.4
+
 # Opcional: status bar
 # Usa este estilo para la barra de estado si quieres un fondo semitransparente
 # Puedes asignarlo con canvas en el widget correspondiente
