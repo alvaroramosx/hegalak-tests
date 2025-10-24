@@ -84,6 +84,8 @@ def generate_pdf(
 	c.drawString(2 * cm, y, f"Edad: {patient_info.get('age', '')}")
 	y -= 0.6 * cm
 	c.drawString(2 * cm, y, f"Fecha: {patient_info.get('date', '')}")
+	y -= 0.6 * cm
+	c.drawString(2 * cm, y, f"Fisioterapeuta: {patient_info.get('therapist', '')}")
 
 	y -= 1.0 * cm
 	c.setFont("Helvetica-Bold", 12)
@@ -135,7 +137,7 @@ def generate_pdf(
 	# Interpretación fisioterapéutica (misma página)
 	y -= 0.9 * cm
 	c.setFont("Helvetica-Bold", 12)
-	c.drawString(2 * cm, y, "Interpretación fisioterapéutica")
+	c.drawString(2 * cm, y, "Interpretación detallada")
 	c.setFont("Helvetica", 11)
 	y -= 0.6 * cm
 	exps = long_explanations(balance_score, gait_score, chair_score, int(results.get('total', 0) or 0))

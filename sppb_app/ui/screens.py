@@ -111,10 +111,12 @@ class StartScreen(BaseScreen):
 		self.name_input = self.style_input(TextInput(hint_text="Nombre paciente", multiline=False, size_hint_y=None, height=48))
 		self.age_input = self.style_input(TextInput(hint_text="Edad", multiline=False, input_filter="int", size_hint_y=None, height=48))
 		self.date_input = self.style_input(TextInput(text=date.today().strftime("%Y-%m-%d"), multiline=False, size_hint_y=None, height=48))
+		self.therapist_input = self.style_input(TextInput(hint_text="Fisioterapeuta", multiline=False, size_hint_y=None, height=48))
 
 		form.add_widget(Label(text="Nombre", size_hint_y=None, height=48)); form.add_widget(self.name_input)
 		form.add_widget(Label(text="Edad", size_hint_y=None, height=48)); form.add_widget(self.age_input)
 		form.add_widget(Label(text="Fecha", size_hint_y=None, height=48)); form.add_widget(self.date_input)
+		form.add_widget(Label(text="Fisioterapeuta", size_hint_y=None, height=48)); form.add_widget(self.therapist_input)
 
 		scroll = ScrollView(size_hint=(1, 1))
 		scroll.add_widget(form)
@@ -138,6 +140,7 @@ class StartScreen(BaseScreen):
 		self.state.test_date = self.date_input.text.strip() or date.today().strftime("%Y-%m-%d")
 		self.root_widget.drive_url = (config.DRIVE_FOLDER_URL or "").strip()
 		self.root_widget.logo_path = (config.LOGO_PATH or None)
+		self.root_widget.therapist = self.therapist_input.text.strip()
 		if not self.state.name or not self.state.age:
 			self.set_status("❗ Introduce nombre y edad del paciente.")
 			return
@@ -225,9 +228,9 @@ class BalanceFeetScreen(BaseScreen):
 		self.opt_no = CheckBox(size_hint_y=None, height=40)
 		self.opt_na = CheckBox(size_hint_y=None, height=40)
 		form.add_widget(self.centered_label("Tiempo (s)", 48)); form.add_widget(self.time_ft)
-		form.add_widget(Label(text="Pies juntos · Mantuvo 10 s (1 punto)", size_hint_y=None, height=40)); form.add_widget(self.opt_yes)
-		form.add_widget(Label(text="No mantuvo 10 s (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_no)
-		form.add_widget(Label(text="No intentado (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_na)
+		form.add_widget(self.wrapped_label("Pies juntos · Mantuvo 10 s (1 punto)", 40)); form.add_widget(self.opt_yes)
+		form.add_widget(self.wrapped_label("No mantuvo 10 s (0 puntos)", 40)); form.add_widget(self.opt_no)
+		form.add_widget(self.wrapped_label("No intentado (0 puntos)", 40)); form.add_widget(self.opt_na)
 
 		self._bind_exclusive(self.opt_yes, self.opt_no, self.opt_na)
 		self.time_ft.bind(text=lambda *_: self._on_time_change_feet())
@@ -313,9 +316,9 @@ class BalanceSemiScreen(BaseScreen):
 		self.opt_no = CheckBox(size_hint_y=None, height=40)
 		self.opt_na = CheckBox(size_hint_y=None, height=40)
 		form.add_widget(self.centered_label("Tiempo (s)", 48)); form.add_widget(self.time_semi)
-		form.add_widget(Label(text="Semitándem · Mantuvo 10 s (1 punto)", size_hint_y=None, height=40)); form.add_widget(self.opt_yes)
-		form.add_widget(Label(text="No mantuvo 10 s (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_no)
-		form.add_widget(Label(text="No intentado (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_na)
+		form.add_widget(self.wrapped_label("Semitándem · Mantuvo 10 s (1 punto)", 40)); form.add_widget(self.opt_yes)
+		form.add_widget(self.wrapped_label("No mantuvo 10 s (0 puntos)", 40)); form.add_widget(self.opt_no)
+		form.add_widget(self.wrapped_label("No intentado (0 puntos)", 40)); form.add_widget(self.opt_na)
 
 		self._bind_exclusive(self.opt_yes, self.opt_no, self.opt_na)
 		self.time_semi.bind(text=lambda *_: self._on_time_change_semi())
@@ -402,10 +405,10 @@ class BalanceTandemScreen(BaseScreen):
 		self.opt_lt3 = CheckBox(size_hint_y=None, height=40)
 		self.opt_na = CheckBox(size_hint_y=None, height=40)
 		form.add_widget(self.centered_label("Tiempo (s)", 48)); form.add_widget(self.time_tandem)
-		form.add_widget(Label(text="Tándem · Mantuvo 10 s (2 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_10)
-		form.add_widget(Label(text="Mantuvo 3–9.99 s (1 punto)", size_hint_y=None, height=40)); form.add_widget(self.opt_3to9)
-		form.add_widget(Label(text="< 3 s (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_lt3)
-		form.add_widget(Label(text="No intentado (0 puntos)", size_hint_y=None, height=40)); form.add_widget(self.opt_na)
+		form.add_widget(self.wrapped_label("Tándem · Mantuvo 10 s (2 puntos)", 40)); form.add_widget(self.opt_10)
+		form.add_widget(self.wrapped_label("Mantuvo 3–9.99 s (1 punto)", 40)); form.add_widget(self.opt_3to9)
+		form.add_widget(self.wrapped_label("< 3 s (0 puntos)", 40)); form.add_widget(self.opt_lt3)
+		form.add_widget(self.wrapped_label("No intentado (0 puntos)", 40)); form.add_widget(self.opt_na)
 
 		self._bind_exclusive(self.opt_10, self.opt_3to9, self.opt_lt3, self.opt_na)
 		self.time_tandem.bind(text=lambda *_: self._on_time_change_tandem())
@@ -520,10 +523,10 @@ class GaitScreen(BaseScreen):
 
 		self.cats_grid = GridLayout(cols=4, size_hint_y=None, padding=5, spacing=10)
 		self.cats_grid.bind(minimum_height=self.cats_grid.setter('height'))
-		self.cats_grid.add_widget(self.centered_label("Si el tiempo es > 8.70 s: 1 punto")); self.cats_grid.add_widget(self.cat_gt_870)
-		self.cats_grid.add_widget(self.centered_label("Si el tiempo es 6.21–8.70 s: 2 puntos")); self.cats_grid.add_widget(self.cat_621_870)
-		self.cats_grid.add_widget(self.centered_label("Si el tiempo es 4.82–6.20 s: 3 puntos")); self.cats_grid.add_widget(self.cat_482_620)
-		self.cats_grid.add_widget(self.centered_label("Si el tiempo es < 4.82 s: 4 puntos")); self.cats_grid.add_widget(self.cat_lt_482)
+		self.cats_grid.add_widget(self.wrapped_label("Si el tiempo es > 8.70 s: 1 punto", 40)); self.cats_grid.add_widget(self.cat_gt_870)
+		self.cats_grid.add_widget(self.wrapped_label("Si el tiempo es 6.21–8.70 s: 2 puntos", 40)); self.cats_grid.add_widget(self.cat_621_870)
+		self.cats_grid.add_widget(self.wrapped_label("Si el tiempo es 4.82–6.20 s: 3 puntos", 40)); self.cats_grid.add_widget(self.cat_482_620)
+		self.cats_grid.add_widget(self.wrapped_label("Si el tiempo es < 4.82 s: 4 puntos", 40)); self.cats_grid.add_widget(self.cat_lt_482)
 
 		container.add_widget(self.cats_grid)
 
@@ -634,11 +637,11 @@ class ChairScreen(BaseScreen):
 
 		self.cats_grid_chair = GridLayout(cols=2, size_hint_y=None, padding=5, spacing=10)
 		self.cats_grid_chair.bind(minimum_height=self.cats_grid_chair.setter('height'))
-		self.cats_grid_chair.add_widget(self.centered_label("No puede completar 5 levantamientos o tarda > 60 s: 0 puntos")); self.cats_grid_chair.add_widget(self.cat_unable_or_gt60)
-		self.cats_grid_chair.add_widget(self.centered_label("Si el tiempo es ≥ 16.70 s: 1 punto")); self.cats_grid_chair.add_widget(self.cat_ge_1670)
-		self.cats_grid_chair.add_widget(self.centered_label("Si el tiempo es 13.70–16.69 s: 2 puntos")); self.cats_grid_chair.add_widget(self.cat_1370_1669)
-		self.cats_grid_chair.add_widget(self.centered_label("Si el tiempo es 11.20–13.69 s: 3 puntos")); self.cats_grid_chair.add_widget(self.cat_1120_1369)
-		self.cats_grid_chair.add_widget(self.centered_label("Si el tiempo es ≤ 11.19 s: 4 puntos")); self.cats_grid_chair.add_widget(self.cat_le_1119)
+		self.cats_grid_chair.add_widget(self.wrapped_label("No puede completar 5 levantamientos o tarda > 60 s: 0 puntos", 40)); self.cats_grid_chair.add_widget(self.cat_unable_or_gt60)
+		self.cats_grid_chair.add_widget(self.wrapped_label("Si el tiempo es ≥ 16.70 s: 1 punto", 40)); self.cats_grid_chair.add_widget(self.cat_ge_1670)
+		self.cats_grid_chair.add_widget(self.wrapped_label("Si el tiempo es 13.70–16.69 s: 2 puntos", 40)); self.cats_grid_chair.add_widget(self.cat_1370_1669)
+		self.cats_grid_chair.add_widget(self.wrapped_label("Si el tiempo es 11.20–13.69 s: 3 puntos", 40)); self.cats_grid_chair.add_widget(self.cat_1120_1369)
+		self.cats_grid_chair.add_widget(self.wrapped_label("Si el tiempo es ≤ 11.19 s: 4 puntos", 40)); self.cats_grid_chair.add_widget(self.cat_le_1119)
 
 		container = GridLayout(cols=1, size_hint_y=None, padding=0, spacing=10)
 		container.bind(minimum_height=container.setter('height'))
@@ -766,7 +769,9 @@ class SummaryScreen(BaseScreen):
 		row2.add_widget(self.donut_total)
 		self.graph_container.add_widget(row2)
 
-		self.summary_label = Label(text="", size_hint_y=None, height=140)
+		self.summary_label = Label(text="", size_hint_y=None, height=140, halign='center', valign='middle')
+		self.summary_label.bind(width=lambda s, w: setattr(s, 'text_size', (w - 20, None)))
+		self.summary_label.bind(texture_size=lambda s, ts: setattr(s, 'height', max(140, ts[1] + 8)))
 		title = Factory.TitleLabel(text="Resumen final", size_hint_y=None, height=40)
 		card.add_widget(title)
 		# Separación bajo el título para que los dónuts no lo invadan
@@ -807,7 +812,7 @@ class SummaryScreen(BaseScreen):
 		self.update_progress()
 
 	def on_send(self):
-		patient = {"name": self.state.name, "age": self.state.age, "date": self.state.test_date}
+		patient = {"name": self.state.name, "age": self.state.age, "date": self.state.test_date, "therapist": (self.root_widget.therapist or "")}
 		scores = self.state.current_scores()
 		inputs = self.state.to_inputs()
 		results = {
@@ -861,6 +866,7 @@ class WizardRoot(BoxLayout):
 	progress_bar: ProgressBar
 	drive_url: str = ""
 	logo_path: Optional[str] = None
+	therapist: Optional[str] = None
 
 	def __init__(self, **kwargs):
 		super().__init__(orientation="vertical", **kwargs)
