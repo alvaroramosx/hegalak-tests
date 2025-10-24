@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
+from .explanations import long_explanations
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -10,10 +11,28 @@ from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 
 
+def _resolve_logo_path(logo_path: Optional[str]) -> Optional[str]:
+	"""Return a best-effort absolute path to a logo image if available."""
+	candidates = []
+	if logo_path:
+		candidates.append(Path(logo_path))
+	# Buscar logo por defecto en assets
+	default_asset = Path(__file__).resolve().parents[1] / "assets" / "logo.png"
+	candidates.append(default_asset)
+	for p in candidates:
+		try:
+			if p.exists():
+				return str(p)
+		except Exception:
+			pass
+	return None
+
+
 def _draw_header(c: canvas.Canvas, logo_path: Optional[str], center_name: str) -> None:
 	width, height = A4
-	if logo_path and Path(logo_path).exists():
-		c.drawImage(logo_path, 2 * cm, height - 3.5 * cm, width=3 * cm, height=3 * cm, preserveAspectRatio=True, mask='auto')
+	resolved = _resolve_logo_path(logo_path)
+	if resolved:
+		c.drawImage(resolved, 2 * cm, height - 3.5 * cm, width=3 * cm, height=3 * cm, preserveAspectRatio=True, mask='auto')
 	else:
 		c.setStrokeColor(colors.black)
 		c.rect(2 * cm, height - 3.5 * cm, 3 * cm, 3 * cm)
@@ -23,6 +42,20 @@ def _draw_header(c: canvas.Canvas, logo_path: Optional[str], center_name: str) -
 	c.drawString(6 * cm, height - 2.0 * cm, center_name)
 	c.setFont("Helvetica", 12)
 	c.drawString(6 * cm, height - 2.7 * cm, "Informe de SPPB (Short Physical Performance Battery)")
+
+
+def _draw_wrapped_text(c: canvas.Canvas, text: str, x: float, y: float, width_chars: int = 100, line_height: float = 0.5 * cm) -> float:
+	"""Dibuja un párrafo simple con salto de línea aproximado por número de caracteres. Devuelve la nueva coordenada y."""
+	while text:
+		line = text[:width_chars]
+		if len(text) > width_chars and " " in text[:width_chars]:
+			idx = line.rfind(" ")
+			if idx != -1:
+				line = line[:idx]
+		c.drawString(x, y, line)
+		text = text[len(line):].lstrip()
+		y -= line_height
+	return y
 
 
 def generate_pdf(
@@ -63,7 +96,8 @@ def generate_pdf(
 	y -= 0.5 * cm
 	c.drawString(2 * cm, y, f"Tándem (s): {results.get('tandem_s', '')}")
 	y -= 0.5 * cm
-	c.drawString(2 * cm, y, f"Puntuación equilibrio: {results.get('balance_score', '')} / 4")
+	balance_score = int(results.get('balance_score', 0) or 0)
+	c.drawString(2 * cm, y, f"Puntuación equilibrio: {balance_score} / 4")
 
 	y -= 0.9 * cm
 	c.setFont("Helvetica-Bold", 12)
@@ -75,7 +109,8 @@ def generate_pdf(
 	gait_time_str = "No pudo completar" if gait_unable else f"{gait_time} s"
 	c.drawString(2 * cm, y, f"Tiempo: {gait_time_str}")
 	y -= 0.5 * cm
-	c.drawString(2 * cm, y, f"Puntuación marcha: {results.get('gait_score', '')} / 4")
+	gait_score = int(results.get('gait_score', 0) or 0)
+	c.drawString(2 * cm, y, f"Puntuación marcha: {gait_score} / 4")
 
 	y -= 0.9 * cm
 	c.setFont("Helvetica-Bold", 12)
@@ -87,7 +122,8 @@ def generate_pdf(
 	chair_time_str = "No pudo completar" if chair_unable else f"{chair_time} s"
 	c.drawString(2 * cm, y, f"Tiempo: {chair_time_str}")
 	y -= 0.5 * cm
-	c.drawString(2 * cm, y, f"Puntuación silla: {results.get('chair_score', '')} / 4")
+	chair_score = int(results.get('chair_score', 0) or 0)
+	c.drawString(2 * cm, y, f"Puntuación silla: {chair_score} / 4")
 
 	y -= 1.0 * cm
 	c.setFont("Helvetica-Bold", 13)
@@ -95,6 +131,27 @@ def generate_pdf(
 	y -= 0.6 * cm
 	c.setFont("Helvetica", 12)
 	c.drawString(2 * cm, y, f"Conclusión: {results.get('interpretation', '')}")
+
+	# Interpretación fisioterapéutica (misma página)
+	y -= 0.9 * cm
+	c.setFont("Helvetica-Bold", 12)
+	c.drawString(2 * cm, y, "Interpretación fisioterapéutica")
+	c.setFont("Helvetica", 11)
+	y -= 0.6 * cm
+	exps = long_explanations(balance_score, gait_score, chair_score, int(results.get('total', 0) or 0))
+	for title in ("Equilibrio", "Marcha", "Silla", "Total"):
+		key = title.lower()
+		text = exps.get(key, "")
+		if not text:
+			continue
+		c.setFont("Helvetica-Bold", 11)
+		c.drawString(2 * cm, y, title)
+		c.setFont("Helvetica", 11)
+		y -= 0.5 * cm
+		y = _draw_wrapped_text(c, text, 2 * cm, y, width_chars=95, line_height=0.48 * cm)
+		y -= 0.3 * cm
+
+	# Pie de página
 
 	c.setFont("Helvetica", 9)
 	c.setFillColor(colors.grey)

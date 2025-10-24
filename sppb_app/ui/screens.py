@@ -13,15 +13,23 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.scrollview import ScrollView
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty, NumericProperty, ListProperty
 from kivy.app import App
 from kivy.utils import get_color_from_hex as rgba
 from kivy.factory import Factory
 from kivy.core.window import Window
 from kivy.uix.anchorlayout import AnchorLayout
+from kivy.uix.relativelayout import RelativeLayout
+from kivy.graphics import Color, Line
 
 from ..models.sppb_logic import compute_scores
+try:
+	from kivy_garden.graph import Graph, MeshLinePlot
+except Exception:
+	Graph = None
+	MeshLinePlot = None
 from ..services.pdf_generator import generate_pdf
+from ..services.explanations import short_summary
 from ..services.excel_exporter import export_to_excel
 from ..services.drive_uploader import upload_file_to_drive
 from .. import config
@@ -108,7 +116,6 @@ class StartScreen(BaseScreen):
 		form.add_widget(Label(text="Edad", size_hint_y=None, height=48)); form.add_widget(self.age_input)
 		form.add_widget(Label(text="Fecha", size_hint_y=None, height=48)); form.add_widget(self.date_input)
 
-
 		scroll = ScrollView(size_hint=(1, 1))
 		scroll.add_widget(form)
 
@@ -137,6 +144,71 @@ class StartScreen(BaseScreen):
 		self.set_status("")
 		self.root_widget.goto("balance_feet")
 
+class DonutCanvas(AnchorLayout):
+	value: float = NumericProperty(0.0)
+	max_value: float = NumericProperty(4.0)
+	color_rgba: list = ListProperty([0.49, 0.18, 0.07, 1])
+
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
+		self.bind(size=lambda *_: self._redraw())
+		self.bind(pos=lambda *_: self._redraw())
+		self.bind(value=lambda *_: self._redraw())
+		self.bind(max_value=lambda *_: self._redraw())
+
+	def _redraw(self):
+		self.canvas.clear()
+		w, h = self.size
+		cx, cy = self.center
+		base_r = min(w, h) / 2 - 8
+		th = max(10, min(26, base_r * 0.22))
+		r = max(0, base_r - th / 2 - 2)
+		ang = 360.0 * (0 if self.max_value <= 0 else max(0.0, min(1.0, float(self.value) / float(self.max_value))))
+		with self.canvas:
+			Color(0.8, 0.78, 0.74, 1)
+			Line(circle=(cx, cy, r), width=th)
+			Color(*self.color_rgba)
+			Line(circle=(cx, cy, r), width=th, angle_start=-90, angle_end=-90+ang)
+
+
+class DonutGauge(BoxLayout):
+	def __init__(self, title: str, max_value: float, color_rgba=None, auto_color: bool = False, **kwargs):
+		super().__init__(orientation="vertical", **kwargs)
+		default_color = rgba('#0EA5E9')
+		self.auto_color = bool(auto_color)
+		self.title_base = title
+		self.chart_area = AnchorLayout(size_hint=(1, None), height=120)
+		self.canvas_widget = DonutCanvas(size_hint=(1, 1), color_rgba=list(color_rgba or default_color), max_value=max_value)
+		self.value_label = Label(text="0%", size_hint=(None, None), size=(0, 0))
+		self.chart_area.add_widget(self.canvas_widget)
+		self.chart_area.add_widget(self.value_label)
+		self.add_widget(self.chart_area)
+		# Caption inicial con 0/x
+		self.caption = Label(text=f"{self.title_base} (0/{int(max_value)})", size_hint=(1, None), height=24)
+		self.add_widget(self.caption)
+
+	def set_value(self, v: float):
+		val = float(v or 0)
+		self.canvas_widget.value = val
+		max_v = float(self.canvas_widget.max_value or 1)
+		ratio = max(0.0, min(1.0, val / max_v))
+		pct = int(round(ratio * 100))
+		self.value_label.text = f"{pct}%"
+		if self.auto_color:
+			# Escala por tramos: rojo → naranja → amarillo → verde claro → verde
+			if ratio < 0.20:
+				col = rgba('#B91C1C')  # rojo
+			elif ratio < 0.40:
+				col = rgba('#F97316')  # naranja
+			elif ratio < 0.60:
+				col = rgba('#EAB308')  # amarillo
+			elif ratio < 0.80:
+				col = rgba('#86EFAC')  # verde claro
+			else:
+				col = rgba('#16A34A')  # verde
+			self.canvas_widget.color_rgba = list(col)
+		# Caption con valor actual v/x
+		self.caption.text = f"{self.title_base} ({int(val)}/{int(max_v)})"
 
 class BalanceFeetScreen(BaseScreen):
 	def __init__(self, root, **kwargs):
@@ -677,55 +749,61 @@ class SummaryScreen(BaseScreen):
 		layout = BoxLayout(orientation="vertical", padding=20, spacing=16)
 
 		card = Factory.Surface(orientation="vertical", padding=16, spacing=12)
-		# Gráficos simples con barras
-		self.graph_box = BoxLayout(orientation="vertical", size_hint=(1, None), height=120, spacing=6)
-		self.graph_box.add_widget(self.wrapped_label("Equilibrio", 22))
-		self.bar_balance = ProgressBar(max=4, value=0, size_hint=(1, None), height=18)
-		self.graph_box.add_widget(self.bar_balance)
-		self.graph_box.add_widget(self.wrapped_label("Marcha", 22))
-		self.bar_gait = ProgressBar(max=4, value=0, size_hint=(1, None), height=18)
-		self.graph_box.add_widget(self.bar_gait)
-		self.graph_box.add_widget(self.wrapped_label("Silla", 22))
-		self.bar_chair = ProgressBar(max=4, value=0, size_hint=(1, None), height=18)
-		self.graph_box.add_widget(self.bar_chair)
-		self.graph_box.add_widget(self.wrapped_label("Total", 22))
-		self.bar_total = ProgressBar(max=12, value=0, size_hint=(1, None), height=18)
-		self.graph_box.add_widget(self.bar_total)
+		# Zona de gráficos: usa Kivy Garden Graph si está disponible; si no, se usa fallback con barras
+		self.graph_container = BoxLayout(orientation="vertical", size_hint=(1, None), height=260, spacing=8)
+		self.using_garden_graph = False
+		# Donuts individuales
+		row1 = BoxLayout(size_hint=(1, None), height=170, spacing=24, padding=(0, 10))
+		self.donut_balance = DonutGauge("Equilibrio: ", max_value=4, auto_color=True)
+		self.donut_gait = DonutGauge("Marcha: ", max_value=4, auto_color=True)
+		self.donut_chair = DonutGauge("Silla: ", max_value=4, auto_color=True)
+		row1.add_widget(self.donut_balance)
+		row1.add_widget(self.donut_gait)
+		row1.add_widget(self.donut_chair)
+		self.graph_container.add_widget(row1)
+		row2 = BoxLayout(size_hint=(1, None), height=170, spacing=24, padding=(0, 0))
+		self.donut_total = DonutGauge("Total: ", max_value=12, auto_color=True)
+		row2.add_widget(self.donut_total)
+		self.graph_container.add_widget(row2)
 
 		self.summary_label = Label(text="", size_hint_y=None, height=140)
-		btns = BoxLayout(size_hint_y=None, height=56, spacing=10)
-		send_btn = Factory.PrimaryButton(text="Enviar a Drive")
-		send_btn.bind(on_release=lambda *_: self.on_send())
-		btns.add_widget(send_btn)
-
 		title = Factory.TitleLabel(text="Resumen final", size_hint_y=None, height=40)
 		card.add_widget(title)
-		card.add_widget(self.graph_box)
+		# Separación bajo el título para que los dónuts no lo invadan
+		try:
+			from kivy.uix.widget import Widget as _Widget
+			card.add_widget(_Widget(size_hint_y=None, height=50))
+		except Exception:
+			pass
+		card.add_widget(self.graph_container)
 		# Mover resumen arriba del todo
 		card.add_widget(self.summary_label)
-		card.add_widget(btns)
 
-		# Ancla el contenido arriba
+
+		# Ancla el contenido arriba y deja que el card crezca según sus hijos
 		wrapper = AnchorLayout(anchor_y='top', anchor_x='center')
 		card.size_hint = (1, None)
-		card.height = 320
+		try:
+			card.bind(minimum_height=card.setter('height'))
+		except Exception:
+			pass
 		wrapper.add_widget(card)
 		layout.add_widget(wrapper)
 		self.add_widget(layout)
 
 	def on_pre_enter(self):
 		s = self.state.current_scores()
-		# Actualiza barras
-		self.bar_balance.value = s.balance_score
-		self.bar_gait.value = s.gait_score
-		self.bar_chair.value = s.chair_score
-		self.bar_total.value = s.total
-		self.summary_label.text = (
-			f"Equilibrio: {s.balance_score}/4\n"
-			f"Marcha: {s.gait_score}/4\n"
-			f"Silla: {s.chair_score}/4\n"
-			f"Total: {s.total}/12 - {s.interpretation}"
-		)
+		# Actualiza gráficos
+		# Asegura consistencia: valores no negativos y dentro del máximo; fuerza actualización visual
+		b = max(0, min(4, int(s.balance_score)))
+		g = max(0, min(4, int(s.gait_score)))
+		c = max(0, min(4, int(s.chair_score)))
+		t = max(0, min(12, int(s.total)))
+		self.donut_balance.set_value(b)
+		self.donut_gait.set_value(g)
+		self.donut_chair.set_value(c)
+		self.donut_total.set_value(t)
+		self.summary_label.text = short_summary(s.balance_score, s.gait_score, s.chair_score, s.total)
 		self.update_progress()
 
 	def on_send(self):
@@ -806,9 +884,14 @@ class WizardRoot(BoxLayout):
 		self.sm.add_widget(SummaryScreen(self))
 
 		self.status_label = Label(text="", size_hint=(1, None), height=30)
+		# Botón de enviar a Drive fijo arriba de la barra de acciones en la pantalla summary
+		self.send_btn_global = Factory.PrimaryButton(text="Enviar a Drive", size_hint=(1, None), height=56)
+		self.send_btn_global.bind(on_release=lambda *_: self._on_send_from_global())
 
 		self.add_widget(self.progress_bar)
 		self.add_widget(self.sm)
+		# Este botón se mostrará solo en la pantalla summary
+		self.add_widget(self.send_btn_global)
 		self.add_widget(actions)
 		self.add_widget(self.status_label)
 
@@ -820,6 +903,9 @@ class WizardRoot(BoxLayout):
 		self.update_progress()
 		# Oculta la barra en la pantalla inicial
 		self.progress_bar.opacity = 0 if name == "start" else 1
+		# Botón Enviar a Drive visible solo en summary
+		self.send_btn_global.opacity = 1 if name == "summary" else 0
+		self.send_btn_global.disabled = False if name == "summary" else True
 
 	def on_cancel(self):
 		if self.sm.current == "start":
@@ -828,6 +914,14 @@ class WizardRoot(BoxLayout):
 		self.state.reset()
 		self.status_label.text = "Operación cancelada"
 		self.goto("start")
+
+	def _on_send_from_global(self):
+		# Reenvía al manejador de SummaryScreen si estamos allí
+		if self.sm.current == "summary":
+			try:
+				self.sm.get_screen("summary").on_send()
+			except Exception:
+				pass
 
 	def update_progress(self):
 		# Cálculo por fases: 5 pasos (A, B, C de equilibrio, marcha, silla)
