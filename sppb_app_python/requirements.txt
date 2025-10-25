@@ -10,3 +10,4 @@ requests==2.32.3
 # Kivy Garden (opcional si se usa graph)
 kivy-garden==0.1.5
 kivy_garden.graph==0.4.0
+

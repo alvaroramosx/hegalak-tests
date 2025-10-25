@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Colores principales (basados en la app Python) -->
+    <color name="primary">#7C2D12</color>
+    <color name="primary_variant">#92400E</color>
+    <color name="secondary">#EA580C</color>
+    <color name="secondary_variant">#DC2626</color>
+    
+    <!-- Colores de fondo -->
+    <color name="background">#F8F3EA</color>
+    <color name="surface">#FFFFFF</color>
+    
+    <!-- Colores de texto -->
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_secondary">#FFFFFF</color>
+    <color name="on_background">#1C1B1F</color>
+    <color name="on_surface">#1C1B1F</color>
+    
+    <!-- Colores de fragilidad -->
+    <color name="fragility_high">#B91C1C</color>
+    <color name="fragility_moderate">#EAB308</color>
+    <color name="fragility_low">#16A34A</color>
+    
+    <!-- Colores adicionales -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
+
+
