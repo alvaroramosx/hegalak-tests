@@ -168,7 +168,7 @@ class PdfGeneratorService(private val context: Context) {
                 // Crear imagen para el PDF
                 val imageData = ImageDataFactory.create(byteArray)
                 val logo = Image(imageData)
-                    .scaleToFit(120f, 60f)  // Ajustar tamaño del logo
+                    .scaleToFit(480f, 240f)  // Ajustar tamaño del logo
                     .setHorizontalAlignment(HorizontalAlignment.RIGHT)
                     .setFixedPosition(
                         document.pdfDocument.defaultPageSize.width - 140f,  // Posición X (derecha)
